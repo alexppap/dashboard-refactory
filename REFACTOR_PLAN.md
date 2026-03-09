@@ -2,7 +2,6 @@
 
 > 文档版本：v1.0 | 创建日期：2026-03-07
 > 语言：JavaScript (ES Module) | 框架：Vue 3 Composition API + PixiJS
-
 ---
 
 ## 目录
