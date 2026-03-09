@@ -943,23 +943,35 @@ const initialize = () => {
    * @param {PIXI.Container} container - 容器对象
    * @param {Object} state - 交互状态对象
    */
+  // 保存事件处理函数引用，用于正确移除
+  const bindedHandlers = [];
+
   function bindInteractionEvents(Map, container, state) {
+    // 辅助函数：绑定事件并记录引用
+    function bindEvent(target, event, handler, options) {
+      target.addEventListener(event, handler, options);
+      bindedHandlers.push({ target, event, handler, options });
+    }
+
     // 鼠标按下
-    Map.view.addEventListener("mousedown", (event) => {
+    const mousedownHandler = (event) => {
       Map.ticker.start();
       state.isDragging = true;
       state.dragStart = { x: event.clientX, y: event.clientY };
       state.containerStart = { x: container.x, y: container.y };
       closeDialogsAndCleanup();
-    });
+    };
+    bindEvent(Map.view, "mousedown", mousedownHandler);
 
     // 鼠标松开
-    Map.view.addEventListener("mouseup", () => handleMouseUp());
+    const mouseupHandler = () => handleMouseUp();
+    bindEvent(Map.view, "mouseup", mouseupHandler);
 
     // 鼠标移动
-    Map.view.addEventListener("mousemove", (event) => {
+    const mousemoveHandler = (event) => {
       handleMouseMove(event, container, state);
-    });
+    };
+    bindEvent(Map.view, "mousemove", mousemoveHandler);
 
     // 滚轮事件优化
     Map.ticker.add(() => {
@@ -973,23 +985,22 @@ const initialize = () => {
     });
 
     // 鼠标滚轮
-    Map.view.addEventListener("wheel", (event) => {
+    const wheelHandler_view = (event) => {
       handleMouseWheel(event, container, state);
-    });
+    };
+    bindEvent(Map.view, "wheel", wheelHandler_view);
 
-    // 鼠标释放和离开
-    ["mouseup", "mouseleave"].forEach((eventType) => {
-      Map.view.addEventListener(eventType, () => {
-        state.isDragging = false;
-      });
-    });
+    // 鼠标释放和离开 - 统一设置 isDragging = false
+    const stopDraggingHandler = () => {
+      state.isDragging = false;
+    };
+    bindEvent(Map.view, "mouseup", stopDraggingHandler);
+    bindEvent(Map.view, "mouseleave", stopDraggingHandler);
 
     // 触摸事件
-    Map.view.addEventListener("touchstart", handleTouchStart, {
-      passive: false,
-    });
-    Map.view.addEventListener("touchend", handleTouchEnd, { passive: false });
-    Map.view.addEventListener("touchmove", handleTouchMove, { passive: false });
+    bindEvent(Map.view, "touchstart", handleTouchStart, { passive: false });
+    bindEvent(Map.view, "touchend", handleTouchEnd, { passive: false });
+    bindEvent(Map.view, "touchmove", handleTouchMove, { passive: false });
 
     /**
      * 触摸开始处理
@@ -2776,21 +2787,16 @@ onBeforeUnmount(() => {
   // 8. 清理当前地图使用的雪碧图帧 - 保留全局SPRITE_FRAMES结构
   // Object.keys(SPRITE_FRAMES).forEach(key => delete SPRITE_FRAMES[key]);
 
-  // 9. 移除DOM事件
-  if (Map?.view) {
-    [
-      "mousedown",
-      "mousemove",
-      "mouseup",
-      "mouseleave",
-      "wheel",
-      "touchstart",
-      "touchmove",
-      "touchend",
-    ].forEach((event) => {
-      Map.view.removeEventListener(event, () => {});
-    });
-  }
+  // 9. 移除DOM事件 - 使用保存的引用正确移除
+  bindedHandlers.forEach(({ target, event, handler, options }) => {
+    try {
+      target.removeEventListener(event, handler, options);
+    } catch (e) {
+      console.warn("移除事件监听失败:", event, e);
+    }
+  });
+  bindedHandlers.length = 0;
+
   window.removeEventListener("resize", resizeHandler);
   window.removeEventListener("wheel", wheelHandler);
 
