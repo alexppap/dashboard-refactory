@@ -317,6 +317,7 @@ import { API, ip, JDPWebApi } from "../api";
 import { CloseOutlined, CloseCircleFilled } from "@ant-design/icons-vue";
 import { customConfig } from "@/api";
 import moment from "moment";
+import axios from "axios";
 import videojs from "video.js";
 import { useRouter } from "vue-router";
 import { debounce, isEqual } from "lodash";
@@ -1462,31 +1463,16 @@ const asyncloadMapLayer = async () => {
       }
     }
   } else {
-    // 从API获取
+    // 从API获取（异步）
     try {
-      // 同步调用API（阻塞式，会卡住页面）
-      let res;
-      // 1. 同步调用QueryFactoryMapInfo
-      const xhr1 = new XMLHttpRequest();
-      xhr1.open(
-        "POST",
+      // 1. 异步调用QueryFactoryMapInfo
+      const { data: res } = await axios.post(
         ip + "/api/TransportManagement/QueryFactoryMapInfo",
-        false
-      ); // 第三个参数false表示同步
-      xhr1.setRequestHeader("Content-Type", "application/json");
-      xhr1.onload = function () {
-        if (xhr1.status === 200) {
-          res = JSON.parse(xhr1.responseText);
-        } else {
-          throw new Error(`请求失败，状态码：${xhr1.status}`);
-        }
-      };
-      xhr1.send(
-        JSON.stringify({
+        {
           FactoryID:
             props.NowTabID.split("_")[0] ||
             "00000000-0000-0000-0000-000000000000",
-        })
+        }
       );
 
       if (res?.status === 1) {
@@ -1499,23 +1485,13 @@ const asyncloadMapLayer = async () => {
 
         angle.value = res.data.Angle;
 
-        // 2. 同步调用QueryMap
-        let mapInfoRes;
-        const xhr2 = new XMLHttpRequest();
-        xhr2.open("POST", JDPWebApi + "/api/Map/QueryMap", false); // 同步请求
-        xhr2.setRequestHeader("Content-Type", "application/json");
-        xhr2.onload = function () {
-          if (xhr2.status === 200) {
-            mapInfoRes = JSON.parse(xhr2.responseText);
-          } else {
-            throw new Error(`请求失败，状态码：${xhr2.status}`);
-          }
-        };
-        xhr2.send(
-          JSON.stringify({
+        // 2. 异步调用QueryMap
+        const { data: mapInfoRes } = await axios.post(
+          JDPWebApi + "/api/Map/QueryMap",
+          {
             mapLayerIDs: res.data.LayerIDs.concat(res.data.DashedLineLayerIDs),
             mapStyleType: 3,
-          })
+          }
         );
 
         if (mapInfoRes?.status === 1) {
@@ -1563,7 +1539,7 @@ const asyncloadMapLayer = async () => {
               originScale
             );
 
-            // 其他绘制逻辑（省略）
+            // 其他绘制逻辑
             drawFieldText(
               props.FieldTexts,
               mapInfo,
