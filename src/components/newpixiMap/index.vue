@@ -328,17 +328,17 @@ import {
   getHighContrastRGBA,
   positionJson,
   createPolygonGraphic,
-} from "../../public/js/map/mapUtils";
-import { drawCamera, createCameraLstState } from "../../public/js/map/camera";
+} from "./js/map/mapUtils";
+import { drawCamera, createCameraLstState } from "./js/map/camera";
 import {
   drawFieldTexts,
   drawFieldText,
   createTextState,
-} from "../../public/js/map/text";
+} from "./js/map/text";
 import {
   drawBlockAndCombLines,
   createBlockCombState,
-} from "../../public/js/map/block";
+} from "./js/map/block";
 import {
   drawCarSprites,
   drawRouterSprites,
@@ -347,8 +347,8 @@ import {
   drawPBSs,
   createSpriteState,
   stopAnimation,
-} from "../../public/js/map/sprite";
-import { drawLayer, createMapLayerState } from "../../public/js/map/layer";
+} from "./js/map/sprite";
+import { drawLayer, createMapLayerState } from "./js/map/layer";
 import positionPng from "@/assets/imgs/PPMS/position.png";
 // ------------------------------
 // 事件与属性定义
@@ -504,6 +504,9 @@ const interactionState = {
   initialDistance: 0,
   isWheel: false,
 };
+
+// 保存事件处理函数引用，用于正确移除
+const bindedHandlers = [];
 // ------------------------------
 // 配置常量
 // ------------------------------
@@ -944,8 +947,6 @@ const initialize = () => {
    * @param {PIXI.Container} container - 容器对象
    * @param {Object} state - 交互状态对象
    */
-  // 保存事件处理函数引用，用于正确移除
-  const bindedHandlers = [];
 
   function bindInteractionEvents(Map, container, state) {
     // 辅助函数：绑定事件并记录引用
