@@ -1,6 +1,6 @@
 import Hls from "hls.js";
 import { lngLatToMercator, createSprite } from "./mapUtils";
-import { API } from "../../../src/api";
+import { API } from "@/api";
 import { reactive, nextTick } from "vue";
 
 /**

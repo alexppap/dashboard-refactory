@@ -313,9 +313,8 @@ import {
   defineEmits,
   defineExpose,
 } from "vue";
-import { API, ip, JDPWebApi } from "../api";
 import { CloseOutlined, CloseCircleFilled } from "@ant-design/icons-vue";
-import { customConfig } from "@/api";
+import { customConfig, API, ip, JDPWebApi } from "@/api";
 import moment from "moment";
 import axios from "axios";
 import videojs from "video.js";
@@ -328,17 +327,17 @@ import {
   getHighContrastRGBA,
   positionJson,
   createPolygonGraphic,
-} from "./js/map/mapUtils";
-import { drawCamera, createCameraLstState } from "./js/map/camera";
+} from "./js/mapUtils";
+import { drawCamera, createCameraLstState } from "./js/camera";
 import {
   drawFieldTexts,
   drawFieldText,
   createTextState,
-} from "./js/map/text";
+} from "./js/text";
 import {
   drawBlockAndCombLines,
   createBlockCombState,
-} from "./js/map/block";
+} from "./js/block";
 import {
   drawCarSprites,
   drawRouterSprites,
@@ -347,8 +346,8 @@ import {
   drawPBSs,
   createSpriteState,
   stopAnimation,
-} from "./js/map/sprite";
-import { drawLayer, createMapLayerState } from "./js/map/layer";
+} from "./js/sprite";
+import { drawLayer, createMapLayerState } from "./js/layer";
 import positionPng from "@/assets/imgs/PPMS/position.png";
 // ------------------------------
 // 事件与属性定义
@@ -424,7 +423,154 @@ const props = defineProps({
   materialMapLocationInfos: { type: Object, default: () => ({}) },
   FieldInfos: { type: Object, default: () => ({}) },
   FieldTextInfos: { type: Object, default: () => ({}) },
+  /** 本地模式：为true时不调用任何接口，使用mockData展示地图基本功能（底图、拖拽、PBS） */
+  local: { type: Boolean, default: false },
 });
+
+// ------------------------------
+// Mock 数据（local 模式使用）
+// ------------------------------
+const MOCK_MAP_INFO = {
+  MapWidth: 1000,
+  MapHeight: 800,
+  SourceProjectionWKT: '+proj=longlat +datum=WGS84 +no_defs',
+  TargetProjectionWKT: '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs',
+  Origin: { X: 0, Y: 0 },
+  Scale: 1,
+  LayerInfos: [
+    {
+      ZIndex: 0,
+      Elements: [
+        // 主厂房区域
+        {
+          Type: "Polygon",
+          FieldID: "field-001",
+          Name: "主厂房",
+          FillColor: 0x1a3a5c,
+          BorderWidth: 2,
+          BorderColor: 0x30ffff,
+          BorderType: "Default",
+          TextColor: 0xffffff,
+          MapPoints: [
+            { X: 100, Y: 100 }, { X: 500, Y: 100 },
+            { X: 500, Y: 350 }, { X: 100, Y: 350 },
+          ],
+        },
+        // 分段车间
+        {
+          Type: "Polygon",
+          FieldID: "field-002",
+          Name: "分段车间",
+          FillColor: 0x0d4a6b,
+          BorderWidth: 2,
+          BorderColor: 0x30ffff,
+          BorderType: "Default",
+          TextColor: 0xffffff,
+          MapPoints: [
+            { X: 550, Y: 100 }, { X: 900, Y: 100 },
+            { X: 900, Y: 350 }, { X: 550, Y: 350 },
+          ],
+        },
+        // 堆场区域
+        {
+          Type: "Polygon",
+          FieldID: "field-003",
+          Name: "堆场区域",
+          FillColor: 0x0a3050,
+          BorderWidth: 1,
+          BorderColor: 0x2090c0,
+          BorderType: "Default",
+          TextColor: 0xffffff,
+          MapPoints: [
+            { X: 100, Y: 400 }, { X: 400, Y: 400 },
+            { X: 400, Y: 600 }, { X: 100, Y: 600 },
+          ],
+        },
+        // 涂装车间
+        {
+          Type: "Polygon",
+          FieldID: "field-004",
+          Name: "涂装车间",
+          FillColor: 0x14405e,
+          BorderWidth: 1,
+          BorderColor: 0x2090c0,
+          BorderType: "Default",
+          TextColor: 0xffffff,
+          MapPoints: [
+            { X: 450, Y: 400 }, { X: 700, Y: 400 },
+            { X: 700, Y: 600 }, { X: 450, Y: 600 },
+          ],
+        },
+        // 码头区域
+        {
+          Type: "Polygon",
+          FieldID: "field-005",
+          Name: "码头",
+          FillColor: 0x062947,
+          BorderWidth: 2,
+          BorderColor: 0x1890ff,
+          BorderType: "Default",
+          TextColor: 0xffffff,
+          MapPoints: [
+            { X: 100, Y: 650 }, { X: 900, Y: 650 },
+            { X: 900, Y: 750 }, { X: 100, Y: 750 },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const MOCK_PBS_LIST = [
+  {
+    PBSID: "pbs-001",
+    PBSCode: "PBS-A01",
+    MapPoints: [
+      { X: 150, Y: 150 }, { X: 280, Y: 150 },
+      { X: 280, Y: 280 }, { X: 150, Y: 280 },
+    ],
+    CenterX: 215,
+    CenterY: 215,
+    Angle: 0,
+    Mirror: false,
+    DefaultColor: 0x1890ff,
+    Transparency: 0.6,
+    PlanStatus: 0,
+    RefObjectType: 0,
+  },
+  {
+    PBSID: "pbs-002",
+    PBSCode: "PBS-B02",
+    MapPoints: [
+      { X: 320, Y: 150 }, { X: 450, Y: 150 },
+      { X: 450, Y: 280 }, { X: 320, Y: 280 },
+    ],
+    CenterX: 385,
+    CenterY: 215,
+    Angle: 0,
+    Mirror: false,
+    DefaultColor: 0x52c41a,
+    Transparency: 0.6,
+    PlanStatus: 0,
+    RefObjectType: 0,
+  },
+  {
+    PBSID: "pbs-003",
+    PBSCode: "PBS-C03",
+    MapPoints: [
+      { X: 600, Y: 150 }, { X: 800, Y: 150 },
+      { X: 800, Y: 300 }, { X: 600, Y: 300 },
+    ],
+    CenterX: 700,
+    CenterY: 225,
+    Angle: 0,
+    Mirror: false,
+    DefaultColor: 0xfa8c16,
+    Transparency: 0.6,
+    PlanStatus: 0,
+    RefObjectType: 0,
+  },
+];
 
 // ------------------------------
 // 状态管理
@@ -437,12 +583,12 @@ const textState = createTextState();
 const mapLayerState = createMapLayerState();
 
 // 路由相关
-const routerKey = router.currentRoute.value.path.split("/")[2]
-  ? router.currentRoute.value.path.split("/")[2]
-  : router.currentRoute.value.path.split("/")[1];
-const MapConfigParams = customConfig?.IntergratedManagementBoard?.Params;
-const ProjectProcessParams = customConfig?.ProjectProcess?.Params;
-const ConfigParams = customConfig[routerKey]?.Params;
+// const routerKey = router.currentRoute.value.path.split("/")[2]
+//   ? router.currentRoute.value.path.split("/")[2]
+//   : router.currentRoute.value.path.split("/")[1];
+// const MapConfigParams = customConfig?.IntergratedManagementBoard?.Params;
+// const ProjectProcessParams = customConfig?.ProjectProcess?.Params;
+// const ConfigParams = customConfig[routerKey]?.Params;
 
 // 对话框相关
 const dialogRef = ref(null);
@@ -1402,6 +1548,43 @@ const asyncloadMapLayerHull = async () => {
 };
 
 /**
+ * 本地模式：使用 mockData 加载底图和 PBS，不调用任何接口
+ */
+const asyncloadMapLayerLocal = async () => {
+  // 销毁原底图
+  if (mapLayerState.MapLayer.length) {
+    mapLayerState.MapLayer.forEach((item) => item.destroy());
+    mapLayerState.MapLayer = [];
+  }
+
+  let xarr = [];
+  let yarr = [];
+  let arr = [];
+
+  mapInfo = { ...MOCK_MAP_INFO };
+  angle.value = 0;
+
+  drawLayer(
+    xarr, yarr, arr, props, mapContainer,
+    onHullFieldClick, mapInfo, mapLayerState
+  );
+
+  resetCoordinateSystem(
+    arr, mapInfo, angle, props, scale,
+    originPositionX, originPositionY, mapContainer, originScale
+  );
+
+  // 绘制 mock PBS
+  drawPBSs(
+    { ...props, NowPBSs: MOCK_PBS_LIST, Clickable: true, NowLightPBSsID: [], showLightPBSs: [], oneDefaultColor: false },
+    mapContainer, Map, ConfigParams, mapInfo,
+    PBSOnClick, materialOnClick, spriteState
+  );
+
+  Map.render();
+};
+
+/**
  * 加载并绘制普通底图
  */
 const asyncloadMapLayer = async () => {
@@ -2260,6 +2443,7 @@ const setFieldTextVisibility = (visible, targetText = null) => {
 watch(
   () => [props.NowTabID, props.isHull],
   async (newVal, oldVal) => {
+    if (props.local) return;
     if (!isEqual(newVal, oldVal)) {
       DialogData.showDialog = false;
       emit("changeShowTransitRecords");
@@ -2280,6 +2464,7 @@ watch(
 watch(
   () => [props.mapLayerInfos, props.mapOriginSize],
   async (newVal, oldVal) => {
+    if (props.local) return;
     if (!isEqual(newVal, oldVal)) {
       // 根据条件重新加载地图层
       if (!props.isHull) {
@@ -2361,6 +2546,7 @@ const drawWatchers = [
 // 批量注册绘图监听器
 drawWatchers.forEach(({ deps, handler }) => {
   watch(deps, (newVal, oldVal) => {
+    if (props.local) return;
     if (!isEqual(newVal, oldVal)) {
       handler();
     }
@@ -2407,6 +2593,7 @@ watch(
     props.cameraLst,
   ],
   (newVal, oldVal) => {
+    if (props.local) return;
     if (!isEqual(newVal, oldVal)) {
       debouncedDrawPBSs();
     }
@@ -2545,6 +2732,7 @@ watch(
 watch(
   () => props.mapLayerInfos,
   async (newValue, oldValue) => {
+    if (props.local) return;
     if (!isEqual(newValue, oldValue)) {
       if (newValue.length) {
         await asyncloadMapLayerHull();
@@ -2606,6 +2794,7 @@ watch(
 watch(
   () => [props.FieldTexts],
   (newValue, oldValue) => {
+    if (props.local) return;
     if (!isEqual(newValue, oldValue)) {
       if (newValue[0].length) {
         drawFieldText(
@@ -2669,6 +2858,12 @@ onMounted(async () => {
   // 初始化地图
   await initialize();
   await initPositionSpritesheet();
+
+  // local 模式：使用 mockData，不走任何接口
+  if (props.local) {
+    await asyncloadMapLayerLocal();
+    return;
+  }
 
   // 根据是否是船体图决定绘制底图方法
   if (
