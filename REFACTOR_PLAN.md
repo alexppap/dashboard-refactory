@@ -490,7 +490,7 @@ xhr1.open("POST", url, false); // false = 同步阻塞
 
 | # | 任务 | 说明 |
 |---|------|------|
-| P1-1 | 创建 `core/EventManager.js` | 提取事件绑定/清理逻辑，解决事件泄漏的根本问题(废弃) |
+| P1-1 | 创建 `core/EventManager.js` | 提取事件绑定/清理逻辑，解决事件泄漏的根本问题(废弃,不再抽离) |
 | P1-2 | 创建 `core/PixiEngine.js` | 提取 PIXI.Application 创建/销毁、rootContainer 管理 |
 | P1-3 | 创建 `core/ViewportCamera.js` | 提取缩放/平移/重置逻辑（handleMouseWheel, handlePinchZoom, resetMap 等） |
 | P1-4 | 创建 `core/CoordinateSystem.js` | 提取 resetCoordinateSystem、lngLatToMercator、坐标变换 |
